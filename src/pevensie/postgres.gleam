@@ -1273,7 +1273,7 @@ fn set_in_cache(
       $3,
       " <> expires_at_sql <> "
     )
-    on conflict (resource_type, key) do update set value = $3"
+    on conflict (resource_type, key) do update set value = EXCLUDED.value, expires_at = EXCLUDED.expires_at"
 
   pog.query(sql)
   |> pog.parameter(pog.text(resource_type))
@@ -1487,7 +1487,7 @@ values ('" <> module <> "', timestamptz '" <> {
       new_version |> datetime.to_string
     } <> "')
 on conflict (module)
-do update set version = timestamptz '" <> { new_version |> datetime.to_string } <> "';\n"
+do update set version = EXCLUDED.version;\n"
 
   Ok(Some(migration_sql <> "\n" <> new_version_sql))
 }
