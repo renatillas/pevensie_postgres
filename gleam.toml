@@ -7,6 +7,7 @@ links = [{ title = "Website", href = "https://pevensie.dev" }]
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
+pevensie = ">= 1.0.0 and < 2.0.0"
 argv = ">= 1.0.2 and < 2.0.0"
 filepath = ">= 1.1.0 and < 2.0.0"
 gtempo = ">= 5.1.2 and < 6.0.0"
@@ -15,7 +16,6 @@ pog = ">= 3.1.0 and < 4.0.0"
 glint = ">= 1.1.1 and < 2.0.0"
 simplifile = ">= 2.2.0 and < 3.0.0"
 snag = ">= 1.1.0 and < 2.0.0"
-pevensie = { path = "../pevensie" }
 gleam_erlang = ">= 0.33.0 and < 1.0.0"
 gleam_json = ">= 2.2.0 and < 3.0.0"
 

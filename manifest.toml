@@ -19,7 +19,7 @@ packages = [
   { name = "gtempo", version = "5.1.2", build_tools = ["gleam"], requirements = ["gleam_regexp", "gleam_stdlib", "gleam_yielder"], otp_app = "gtempo", source = "hex", outer_checksum = "61D128B30C7C165A7E08108465791AD2D85B181EC35C0289638F8CB94E28FCF9" },
   { name = "jargon", version = "1.0.1", build_tools = ["rebar3"], requirements = [], otp_app = "jargon", source = "hex", outer_checksum = "E969FC304BBC3F69514161DF5F9B6BA71FEF8EACB3B209784BE15FF48EC68689" },
   { name = "opentelemetry_api", version = "1.4.0", build_tools = ["rebar3", "mix"], requirements = [], otp_app = "opentelemetry_api", source = "hex", outer_checksum = "3DFBBFAA2C2ED3121C5C483162836C4F9027DEF469C41578AF5EF32589FCFC58" },
-  { name = "pevensie", version = "0.1.0", build_tools = ["gleam"], requirements = ["argus", "gleam_crypto", "gleam_erlang", "gleam_json", "gleam_stdlib", "gtempo"], source = "local", path = "../pevensie" },
+  { name = "pevensie", version = "1.0.0", build_tools = ["gleam"], requirements = ["argus", "gleam_crypto", "gleam_erlang", "gleam_json", "gleam_stdlib", "gtempo"], otp_app = "pevensie", source = "hex", outer_checksum = "4EDA007BAD184233E66E4A19DE924276BF723D99BB5F5701D7CCF4CF9322F217" },
   { name = "pg_types", version = "0.4.0", build_tools = ["rebar3"], requirements = [], otp_app = "pg_types", source = "hex", outer_checksum = "B02EFA785CAECECF9702C681C80A9CA12A39F9161A846CE17B01FB20AEEED7EB" },
   { name = "pgo", version = "0.14.0", build_tools = ["rebar3"], requirements = ["backoff", "opentelemetry_api", "pg_types"], otp_app = "pgo", source = "hex", outer_checksum = "71016C22599936E042DC0012EE4589D24C71427D266292F775EBF201D97DF9C9" },
   { name = "pog", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "pgo"], otp_app = "pog", source = "hex", outer_checksum = "23F182BB37AAD5650E5544070BA6AA2775617D4932EE6CD4A53CB878E354D195" },
@@ -37,7 +37,7 @@ gleam_stdlib = { version = ">= 0.34.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glint = { version = ">= 1.1.1 and < 2.0.0" }
 gtempo = { version = ">= 5.1.2 and < 6.0.0" }
-pevensie = { path = "../pevensie" }
+pevensie = { version = ">= 1.0.0 and < 2.0.0" }
 pog = { version = ">= 3.1.0 and < 4.0.0" }
 simplifile = { version = ">= 2.2.0 and < 3.0.0" }
 snag = { version = ">= 1.1.0 and < 2.0.0" }
