@@ -4,6 +4,7 @@ description = "The official Postgres driver for the Pevensie framework"
 licences = ["MIT"]
 repository = { type = "github", user = "Pevensie", repo = "pevensie_postgres" }
 links = [{ title = "Website", href = "https://pevensie.dev" }]
+target = "erlang"
 
 [dependencies]
 gleam_stdlib = ">= 0.34.0 and < 2.0.0"
