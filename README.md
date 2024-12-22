@@ -1,5 +1,8 @@
 # Pevensie Postgres Driver
 
+[![Package Version](https://img.shields.io/hexpm/v/pevensie_postgres)](https://hex.pm/packages/pevensie_postgres)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/pevensie_postgres/)
+
 The official PostgreSQL driver for Pevensie. It provides driver
 implementations for Pevensie modules to be used with Postgres
 databases.
