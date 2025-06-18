@@ -33,6 +33,7 @@ import snag
 import tempo.{type DateTime}
 import tempo/date
 import tempo/datetime
+import tempo/instant
 import tempo/month
 import tempo/time
 
@@ -190,7 +191,7 @@ fn tempo_datetime_to_pog_timestamp(datetime: DateTime) -> pog.Timestamp {
       hours: time.get_hour(time),
       minutes: time.get_minute(time),
       seconds: time.get_second(time),
-      microseconds: time.get_nanosecond(time) / 1000,
+      microseconds: time.get_microsecond(time),
     ),
   )
 }
@@ -341,17 +342,15 @@ pub fn user_decoder(
   )
   use banned_until_micro <- decode.field(13, decode.optional(decode.int))
 
-  let created_at = datetime.from_unix_micro_utc(created_at_micro)
-  let updated_at = datetime.from_unix_micro_utc(updated_at_micro)
-  let deleted_at = option.map(deleted_at_micro, datetime.from_unix_micro_utc)
+  let created_at = datetime.from_unix_micro(created_at_micro)
+  let updated_at = datetime.from_unix_micro(updated_at_micro)
+  let deleted_at = option.map(deleted_at_micro, datetime.from_unix_micro)
   let email_confirmed_at =
-    option.map(email_confirmed_at_micro, datetime.from_unix_micro_utc)
+    option.map(email_confirmed_at_micro, datetime.from_unix_micro)
   let phone_number_confirmed_at =
-    option.map(phone_number_confirmed_at_micro, datetime.from_unix_micro_utc)
-  let last_sign_in =
-    option.map(last_sign_in_micro, datetime.from_unix_micro_utc)
-  let banned_until =
-    option.map(banned_until_micro, datetime.from_unix_micro_utc)
+    option.map(phone_number_confirmed_at_micro, datetime.from_unix_micro)
+  let last_sign_in = option.map(last_sign_in_micro, datetime.from_unix_micro)
+  let banned_until = option.map(banned_until_micro, datetime.from_unix_micro)
 
   decode.success(User(
     id:,
@@ -673,8 +672,8 @@ pub fn session_decoder() -> Decoder(Session) {
   use ip <- decode.field(4, decode.optional(net.ip_address_decoder()))
   use user_agent <- decode.field(5, decode.optional(decode.string))
 
-  let created_at = datetime.from_unix_micro_utc(created_at_micro)
-  let expires_at = option.map(expires_at_micro, datetime.from_unix_micro_utc)
+  let created_at = datetime.from_unix_micro(created_at_micro)
+  let expires_at = option.map(expires_at_micro, datetime.from_unix_micro)
 
   decode.success(Session(
     id:,
@@ -1221,7 +1220,11 @@ fn get_module_version(
       use datetime_string <- decode.field(0, decode.string)
       case datetime.from_string(datetime_string) {
         Ok(datetime) -> decode.success(datetime)
-        Error(_) -> decode.failure(datetime.now_utc(), "ModuleVersion")
+        Error(_) ->
+          decode.failure(
+            instant.now() |> instant.as_utc_datetime,
+            "ModuleVersion",
+          )
       }
     })
     |> pog.execute(tx)
@@ -1258,7 +1261,7 @@ fn version_from_filename(filename: String) -> DateTime {
   let assert Ok(version_string) = filename |> string.split("_") |> list.first
   // gtempo requires an offset to be specified, so add one manually
   let assert Ok(version) =
-    datetime.parse(version_string <> "Z", "YYYYMMDDHHmmssZ")
+    datetime.parse(version_string <> "Z", tempo.Custom("YYYYMMDDHHmmssZ"))
   version
 }
 
