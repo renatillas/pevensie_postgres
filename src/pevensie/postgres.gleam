@@ -5,7 +5,7 @@ import gleam/bool
 import gleam/crypto
 import gleam/dict
 import gleam/dynamic/decode.{type Decoder}
-import gleam/erlang
+import gleam/erlang/application
 import gleam/erlang/process
 import gleam/int
 import gleam/io
@@ -763,7 +763,7 @@ fn get_session(
     // If the value has expired, return None and delete the session
     // in an async task
     [#(_, True)] -> {
-      process.start(fn() { delete_session(driver, session_id) }, False)
+      process.spawn_unlinked(fn() { delete_session(driver, session_id) })
       Error(auth.GotTooFewRecords)
     }
     [] -> Error(auth.GotTooFewRecords)
@@ -1147,10 +1147,9 @@ fn get_from_cache(
     // If the value has expired, return None and delete the key
     // in an async task
     [#(_, True)] -> {
-      process.start(
-        fn() { delete_from_cache(driver, resource_type, key) },
-        False,
-      )
+      process.spawn_unlinked(fn() {
+        delete_from_cache(driver, resource_type, key)
+      })
       Error(cache.GotTooFewRecords)
     }
     [] -> Error(cache.GotTooFewRecords)
@@ -1240,7 +1239,7 @@ fn get_module_version(
 
 fn get_migrations_for_module(module: String) -> Result(List(String), String) {
   use priv <- result.try(
-    erlang.priv_directory("pevensie_postgres")
+    application.priv_directory("pevensie_postgres")
     |> result.replace_error("Couldn't get priv directory"),
   )
 
