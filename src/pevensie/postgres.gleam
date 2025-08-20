@@ -244,6 +244,8 @@ fn connect(
   }
 }
 
+// Supervised connection pool for the Postgres driver. 
+// This is used to create a connection pool that can be supervised by the OTP supervisor.
 pub fn supervised(
   driver: Postgres,
 ) -> supervision.ChildSpecification(pog.Connection) {
