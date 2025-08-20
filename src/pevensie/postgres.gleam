@@ -76,7 +76,6 @@ pub type PostgresConfig {
     idle_interval: Int,
     trace: Bool,
     ip_version: IpVersion,
-    default_timeout: Int,
     pool_name: process.Name(pog.Message),
   )
 }
@@ -127,7 +126,6 @@ pub fn default_config(pool_name: process.Name(pog.Message)) -> PostgresConfig {
     idle_interval: 1000,
     trace: False,
     ip_version: Ipv4,
-    default_timeout: 5000,
     pool_name: pool_name,
   )
 }
