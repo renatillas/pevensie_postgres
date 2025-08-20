@@ -13,10 +13,13 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
+import gleam/otp/static_supervisor as supervisor
+import gleam/otp/supervision
 import gleam/pair
 import gleam/result
 import gleam/set
 import gleam/string
+import gleam/time/timestamp
 import glint
 import pevensie/auth.{
   type AuthDriver, type OneTimeTokenType, type Session, type UpdateField,
@@ -31,11 +34,8 @@ import pog
 import simplifile
 import snag
 import tempo.{type DateTime}
-import tempo/date
 import tempo/datetime
 import tempo/instant
-import tempo/month
-import tempo/time
 
 /// An IP version for a [`PostgresConfig`](#PostgresConfig).
 pub type IpVersion {
@@ -77,6 +77,7 @@ pub type PostgresConfig {
     trace: Bool,
     ip_version: IpVersion,
     default_timeout: Int,
+    pool_name: process.Name(pog.Message),
   )
 }
 
@@ -111,7 +112,7 @@ pub type PostgresError {
 ///   // ...
 /// }
 /// ```
-pub fn default_config() -> PostgresConfig {
+pub fn default_config(pool_name: process.Name(pog.Message)) -> PostgresConfig {
   PostgresConfig(
     host: "127.0.0.1",
     port: 5432,
@@ -127,6 +128,7 @@ pub fn default_config() -> PostgresConfig {
     trace: False,
     ip_version: Ipv4,
     default_timeout: 5000,
+    pool_name: pool_name,
   )
 }
 
@@ -152,7 +154,7 @@ fn postgres_config_to_pog_config(config: PostgresConfig) -> pog.Config {
       Ipv6 -> pog.Ipv6
     },
     rows_as_map: False,
-    default_timeout: config.default_timeout,
+    pool_name: config.pool_name,
   )
 }
 
@@ -177,23 +179,8 @@ fn pog_query_error_to_pevensie_error(
   |> pevensie_error
 }
 
-fn tempo_datetime_to_pog_timestamp(datetime: DateTime) -> pog.Timestamp {
-  let date = datetime.get_date(datetime)
-  let time = datetime.get_time(datetime)
-
-  pog.Timestamp(
-    date: pog.Date(
-      year: date.get_year(date),
-      month: date.get_month(date) |> month.to_int,
-      day: date.get_day(date),
-    ),
-    time: pog.Time(
-      hours: time.get_hour(time),
-      minutes: time.get_minute(time),
-      seconds: time.get_second(time),
-      microseconds: time.get_microsecond(time),
-    ),
-  )
+fn tempo_datetime_to_pog_timestamp(datetime: DateTime) -> timestamp.Timestamp {
+  datetime.to_timestamp(datetime)
 }
 
 // ----- Auth Driver ----- //
@@ -227,7 +214,7 @@ pub fn new_auth_driver(
   AuthDriver(
     driver: Postgres(config, None),
     connect:,
-    disconnect:,
+    disconnect: fn(driver) { Ok(driver) },
     list_users:,
     create_user:,
     update_user:,
@@ -248,10 +235,8 @@ fn connect(
 ) -> Result(Postgres, drivers.ConnectError(PostgresError)) {
   case driver {
     Postgres(config, None) -> {
-      let conn =
-        config
-        |> postgres_config_to_pog_config
-        |> pog.connect
+      let pog_config = postgres_config_to_pog_config(config)
+      let conn = pog.named_connection(pog_config.pool_name)
 
       Ok(Postgres(config, Some(conn)))
     }
@@ -259,17 +244,10 @@ fn connect(
   }
 }
 
-// Closes the connection pool for the given Postgres driver.
-fn disconnect(
+pub fn supervised(
   driver: Postgres,
-) -> Result(Postgres, drivers.DisconnectError(PostgresError)) {
-  case driver {
-    Postgres(config, Some(conn)) -> {
-      let _ = pog.disconnect(conn)
-      Ok(Postgres(config, None))
-    }
-    Postgres(_, None) -> Error(drivers.NotConnected)
-  }
+) -> supervision.ChildSpecification(pog.Connection) {
+  postgres_config_to_pog_config(driver.config) |> pog.supervised()
 }
 
 /// The SQL used to select fields from the `user` table.
@@ -1062,7 +1040,7 @@ pub fn new_cache_driver(
   CacheDriver(
     driver: Postgres(config, None),
     connect: connect,
-    disconnect: disconnect,
+    disconnect: fn(driver) { Ok(driver) },
     set: set_in_cache,
     get: get_from_cache,
     delete: delete_from_cache,
@@ -1457,15 +1435,30 @@ fn migrate_command() {
     modules -> Ok(modules)
   })
 
+  let pool_name = process.new_name("pevensie/postgres/migrate")
   use config <- result.try(
-    pog.url_config(connection_string)
+    pog.url_config(pool_name, connection_string)
     |> result.replace_error(
       snag.Snag(issue: "Invalid Postgres connection string", cause: [
         "invalid connection string",
       ]),
     ),
   )
-  let conn = pog.connect(config)
+  let conn = pog.supervised(config)
+
+  // Start supervision tree
+  use _ <- result.try(
+    supervisor.new(supervisor.OneForOne)
+    |> supervisor.add(conn)
+    |> supervisor.start()
+    |> result.replace_error(
+      snag.Snag(issue: "Failed to start Postgres connection", cause: [
+        "failed to start connection",
+      ]),
+    ),
+  )
+
+  let conn = pog.named_connection(pool_name)
   let transaction_result =
     pog.transaction(conn, fn(tx) {
       use _ <- result.try(handle_module_migration(tx, "base", apply))
