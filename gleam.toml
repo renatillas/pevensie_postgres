@@ -6,6 +6,8 @@ repository = { type = "github", user = "Pevensie", repo = "pevensie_postgres" }
 links = [{ title = "Website", href = "https://pevensie.dev" }]
 target = "erlang"
 
+gleam_version = "1.12"
+
 [dependencies]
 gleam_stdlib = ">= 0.60.0 and < 2.0.0"
 pevensie = ">= 1.2.0 and < 2.0.0"

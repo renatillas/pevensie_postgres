@@ -13,7 +13,6 @@ import gleam/json
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/order
-import gleam/otp/static_supervisor as supervisor
 import gleam/otp/supervision
 import gleam/pair
 import gleam/result
@@ -51,10 +50,12 @@ pub type IpVersion {
 ///
 /// ```gleam
 /// import pevensie/drivers/postgres.{type PostgresConfig}
+/// import gleam/erlang/process
 ///
 /// pub fn main() {
+///   let pool_name = process.new_name("pevensie_pool")
 ///   let config = PostgresConfig(
-///     ..postgres.default_config(),
+///     ..postgres.default_config(pool_name:),
 ///     host: "db.pevensie.dev",
 ///     database: "my_database",
 ///   )
@@ -101,10 +102,12 @@ pub type PostgresError {
 ///
 /// ```gleam
 /// import pevensie/drivers/postgres.{type PostgresConfig}
+/// import gleam/erlang/process
 ///
 /// pub fn main() {
+///   let pool_name = process.new_name("pevensie_pool")
 ///   let config = PostgresConfig(
-///     ..postgres.default_config(),
+///     ..postgres.default_config(pool_name:),
 ///     host: "db.pevensie.dev",
 ///     database: "my_database",
 ///   )
@@ -189,10 +192,12 @@ fn tempo_datetime_to_pog_timestamp(datetime: DateTime) -> timestamp.Timestamp {
 /// ```gleam
 /// import pevensie/drivers/postgres.{type PostgresConfig}
 /// import pevensie/auth.{type PevensieAuth}
+/// import gleam/erlang/process
 ///
 /// pub fn main() {
+///   let pool_name = process.new_name("pevensie_pool")
 ///   let config = PostgresConfig(
-///     ..postgres.default_config(),
+///     ..postgres.default_config(pool_name:),
 ///     host: "db.pevensie.dev",
 ///     database: "my_database",
 ///   )
@@ -212,7 +217,7 @@ pub fn new_auth_driver(
   AuthDriver(
     driver: Postgres(config, None),
     connect:,
-    disconnect: fn(driver) { Ok(driver) },
+    disconnect:,
     list_users:,
     create_user:,
     update_user:,
@@ -248,6 +253,19 @@ pub fn supervised(
   driver: Postgres,
 ) -> supervision.ChildSpecification(pog.Connection) {
   postgres_config_to_pog_config(driver.config) |> pog.supervised()
+}
+
+fn disconnect(
+  driver: Postgres,
+) -> Result(Postgres, drivers.DisconnectError(PostgresError)) {
+  use pid <- result.try(
+    process.named(driver.config.pool_name)
+    |> result.map_error(fn(_) {
+      drivers.DisconnectDriverError(ConnectionUnavailable)
+    }),
+  )
+  process.send_exit(pid)
+  Ok(driver)
 }
 
 /// The SQL used to select fields from the `user` table.
@@ -1022,10 +1040,12 @@ fn delete_one_time_token(
 /// ```gleam
 /// import pevensie/drivers/postgres.{type PostgresConfig}
 /// import pevensie/cache.{type PevensieCache}
+/// import gleam/erlang/process
 ///
 /// pub fn main() {
+///   let pool_name = process.new_name("pevensie_pool")
 ///   let config = PostgresConfig(
-///     ..postgres.default_config(),
+///     ..postgres.default_config(pool_name:),
 ///     host: "db.pevensie.dev",
 ///     database: "my_database",
 ///   )
@@ -1444,23 +1464,17 @@ fn migrate_command() {
       ]),
     ),
   )
-  let conn = pog.supervised(config)
-
-  // Start supervision tree
-  use _ <- result.try(
-    supervisor.new(supervisor.OneForOne)
-    |> supervisor.add(conn)
-    |> supervisor.start()
+  use connection <- result.try(
+    pog.start(config)
     |> result.replace_error(
-      snag.Snag(issue: "Failed to start Postgres connection", cause: [
-        "failed to start connection",
+      snag.Snag(issue: "Failed to connect to Postgres database", cause: [
+        "connection error",
       ]),
     ),
   )
 
-  let conn = pog.named_connection(pool_name)
   let transaction_result =
-    pog.transaction(conn, fn(tx) {
+    pog.transaction(connection.data, fn(tx) {
       use _ <- result.try(handle_module_migration(tx, "base", apply))
 
       let migration_result =

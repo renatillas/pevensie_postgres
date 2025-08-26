@@ -22,10 +22,12 @@ Postgres database with sensible concurrency defaults.
 
 ```gleam
 import pevensie/postgres.{type PostgresConfig}
+import gleam/erlang/process
 
 pub fn main() {
+  let pool_name = process.new_name("pevensie_pool")
   let config = PostgresConfig(
-    ..postgres.default_config(),
+    ..postgres.default_config(pool_name:),
     host: "db.pevensie.dev",
     database: "my_database",
   )
@@ -42,8 +44,9 @@ import pevensie/postgres.{type PostgresConfig}
 import pevensie/auth.{type PevensieAuth}
 
 pub fn main() {
+  let pool_name = process.new_name("pevensie_pool")
   let config = PostgresConfig(
-    ..postgres.default_config(),
+    ..postgres.default_config(pool_name:),
     host: "db.pevensie.dev",
     database: "my_database",
   )
