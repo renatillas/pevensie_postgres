@@ -1059,8 +1059,8 @@ pub fn new_cache_driver(
 ) -> CacheDriver(Postgres, PostgresError) {
   CacheDriver(
     driver: Postgres(config, None),
-    connect: connect,
-    disconnect: fn(driver) { Ok(driver) },
+    connect:,
+    disconnect:,
     set: set_in_cache,
     get: get_from_cache,
     delete: delete_from_cache,
